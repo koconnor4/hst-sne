@@ -139,7 +139,23 @@ def morphology_likelihood(hubbletype):
         hubblefractions = [elliptical,lenticular,irregular,spiral]
         return [lIa,lCC,dlIa,dCC,hubblefractions]
     
-def color_likelihood(color):
+def color_likelihood(color,take_bin=True):
+    if take_bin:
+        # value is outside of LOSS_bin but you will take nearest likelihood anyway
+        # defaults True
+        if color > 6.25:
+            lIa = .08
+            dlIa = [.017,.014]
+            lCC = .01
+            dCC = [.006,.004]
+            return [lIa,lCC,dlIa,dCC]
+        elif color < 0:
+            lIa = 0.026
+            dlIa = [0.010,0.007] # pm
+            lCC = 0.044
+            dCC = [0.010,0.008]
+            return [lIa,lCC,dlIa,dCC]
+
     if color < 0 or color > 6.25:
         # not in one of the bins avail
         return -99.0
@@ -201,10 +217,28 @@ def color_likelihood(color):
             dCC = [.006,.004]
         return [lIa,lCC,dlIa,dCC]
         
-def MK_likelihood(MK):
+def MK_likelihood(MK,take_bin=True):
+    
+    if take_bin:
+        # value is outside of LOSS_bin but you will take nearest likelihood anyway
+        # defaults True
+        if MK > -17.1:
+            lIa = 0.020
+            dlIa = [0.009,0.006] # pm
+            lCC = .055
+            dCC = [0.011,0.009]
+            return [lIa,lCC,dlIa,dCC]
+        elif MK < -26.5:
+            lIa = .079
+            dlIa = [.016,.014]
+            lCC = .018
+            dCC = [.007,.005]
+            return [lIa,lCC,dlIa,dCC]
+
     if MK > -17.1 or MK < -26.5:
         # value not in LOSS bin
         return -99.0
+
     else: # find bin
         if MK >= -21.5 and MK < -17.1:
             lIa = 0.020
@@ -263,7 +297,17 @@ def MK_likelihood(MK):
             dCC = [.007,.005]
         return [lIa,lCC,dlIa,dCC]
 
-def eo_likelihood(eo):
+def eo_likelihood(eo,take_bin=True):
+    if take_bin:
+        # value is outside of LOSS_bin but you will take nearest likelihood anyway
+        # defaults True
+        if eo > 5.25:
+            lIa = .046
+            dlIa = [.013,.010]
+            lCC = .037
+            dCC = [.009,.007]
+            return [lIa,lCC,dlIa,dCC]
+
     if eo < 0 or eo > 5.25:
         return -99.0
     else:
