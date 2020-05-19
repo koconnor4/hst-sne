@@ -1,7 +1,7 @@
 import astropy
 from astropy.io import ascii,fits
 from astropy import wcs
-from astropy.table import vstack, Table
+from astropy.table import vstack, Table,Column
 import numpy as np
 import glob
 from astropy.coordinates import SkyCoord
@@ -16,7 +16,6 @@ warnings.filterwarnings("ignore")
 
 cosmo = FlatLambdaCDM(H0=70, Om0=0.3, Ob0=0.05)
 snwcsunits,catwcsunits = (u.hourangle,u.deg), u.deg
-scale = .06
                             
 def stack(path):
     # to stack catalogs on top of each other
@@ -80,7 +79,11 @@ def prune(cat,prune_colnames=['class_star','stel','pointsource'],verbose=None):
     if type(cat) == list:
         tmps,n = [],0 # will loop through each cat in list and attempt prune then stick back into list  
         for i in cat:
-            colnames = i.colnames
+            try:
+                colnames = i.colnames
+            except:
+                colnames = i[0].colnames
+                i = i[0]
             #colnames = [name.lower() for name in colnames]
             for j in colnames:
                 if j.lower() in prune_colnames:
@@ -104,7 +107,7 @@ def prune(cat,prune_colnames=['class_star','stel','pointsource'],verbose=None):
                 continue
         return tmp
 
-def candels_fields(field='COS',sn=ascii.read('../../sn/candels.csv'),name='name'):
+def candels_fields(field='COS',sn=ascii.read('/Users/kyleoconnor/Documents/spring2020/paper/sn/candels.csv'),name='name'):
     tmp = []
     for i in sn:
         if field in i[name]:
@@ -172,6 +175,7 @@ def neighbors(sn,catfile,N=3,snradec=('ra','dec'),catradec=('ra','dec'),
     if do_diff:
         dra, ddec = sn_coord.spherical_offsets_to(neighbor_coords)
         sep = sn_coord.separation(neighbor_coords)
+        tmp.add_column(Column(sep.arcsec),name='sep_arcsec')
         if verbose:
             print('{} neighbors, w seps ~ {} arcsec'.format(len(tmp),sep.arcsec))
         return tmp
@@ -252,8 +256,11 @@ def eA(params):
     return (cxx,cyy,cxy)
 
 
-def eff_off(sn,obj,snradec,catradec,objparams=None,method=None,verbose=True,**kwargs):
+def eff_off(sn,obj,snradec,catradec,objparams=None,method=None,scale=.06,verbose=True,**kwargs):
     # scale ~ .06''/pix for the archive catalogs where most of the parameters come from
+    # get/give shape params in pixels 
+    # the coords are given in world and scaled to pixels, shape params in pixels cancels for dimensionless eo 
+
     snra,sndec=snradec[0],snradec[1]
     catra,catdec=catradec[0],catradec[1]
     sn_coord = SkyCoord(sn[snra],sn[sndec],unit=snwcsunits)
@@ -287,7 +294,7 @@ def eff_off(sn,obj,snradec,catradec,objparams=None,method=None,verbose=True,**kw
     # these methods are all for sextractor params (i.e. provided in units of pixels not physical) 
     methods = {'abt':abt(sex_params),'eAt':eAt(sex_params),'cij':sex_params}
     # TODO 'eA':eA(sex_params) 
-    cxx,cyy,cxy = methods[method] # /pixel^2
+    cxx,cyy,cxy = methods[method] # /pixel^2; the shape params should've been given in pixels
 
     eo = np.sqrt(cxx*(x**2) + cyy*(y**2) + cxy*(x*y))
     if type(eo) == astropy.table.column.Column:
@@ -307,12 +314,13 @@ def host(sn,neighbors,snradec,catradec,objparams=None,method=None,verbose=True,n
     # neighbors either table with N neighbors; or list length N neighbors that have set of tables in lists 
     for i in range(len(neighbors)): 
         neighbor = neighbors[i]
-        tmp = eff_off(sn,neighbor,snradec,catradec,objparams=objparams,method=method,**kwargs)
+        tmp = eff_off(sn,neighbor,snradec,catradec,objparams=objparams,method=method,verbose=verbose,**kwargs)
         offsets.append(tmp)
 
     li = np.argmin(offsets)
+    eo = offsets[li]
     if verbose:
-        eo = offsets[li]
+        #eo = offsets[li]
         print('host eo ~ {}'.format(eo))
     
     if no_host:
